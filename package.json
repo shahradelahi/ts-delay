@@ -1,6 +1,6 @@
 {
   "name": "@se-oss/delay",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "description": "A lightweight utility to delay a promise for a specified amount of time.",
   "keywords": [
     "promise",
