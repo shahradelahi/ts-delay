@@ -114,4 +114,12 @@ describe('delay', () => {
     expect(cleared.length).toBe(1);
     expect(cleared[0]).toBe(callbacks[2]!.handle);
   });
+
+  it('can return stats with drift', async () => {
+    const { value, stats } = await delay(50, { value: 'test', stats: true });
+    expect(value).toBe('test');
+    expect(typeof stats.drift).toBe('number');
+    expect(stats.drift).toBeGreaterThanOrEqual(-10); // Allow some negative drift due to Date.now() resolution
+    expect(stats.drift).toBeLessThan(50); // Should be reasonably accurate
+  });
 });

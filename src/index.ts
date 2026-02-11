@@ -1,7 +1,7 @@
 import { randomNumber } from '@se-oss/rand';
 import { clearTimeout as safeClearTimeout, setTimeout as safeSetTimeout } from '@se-oss/timeout';
 
-import type { Options } from './typings';
+import type { DelayStats, Options } from './typings';
 
 const clearMethods = new WeakMap<Promise<unknown>, () => void>();
 
@@ -25,7 +25,15 @@ export function createDelay({
   ) => unknown;
 } = {}) {
   // We cannot use `async` here as we need the promise identity.
-  return <T>(milliseconds: number, { value, signal }: Options<T> = {}): Promise<T> => {
+  function delay<T>(
+    milliseconds: number,
+    options: Options<T> & { stats: true }
+  ): Promise<{ value: T; stats: DelayStats }>;
+  function delay<T>(milliseconds: number, options?: Options<T>): Promise<T>;
+  function delay<T>(
+    milliseconds: number,
+    { value, signal, stats }: Options<T> = {}
+  ): Promise<T | { value: T; stats: DelayStats }> {
     if (signal?.aborted) {
       return Promise.reject(signal.reason);
     }
@@ -46,10 +54,17 @@ export function createDelay({
       }
     };
 
-    const delayPromise = new Promise<T>((resolve, reject) => {
+    const startTime = Date.now();
+
+    const delayPromise = new Promise<any>((resolve, reject) => {
       settle = () => {
         cleanup();
-        resolve(value as T);
+        if (stats) {
+          const drift = Date.now() - startTime - milliseconds;
+          resolve({ value, stats: { drift } });
+        } else {
+          resolve(value as T);
+        }
       };
 
       rejectFunction = reject;
@@ -67,7 +82,9 @@ export function createDelay({
     });
 
     return delayPromise;
-  };
+  }
+
+  return delay;
 }
 
 /**
@@ -92,7 +109,13 @@ export default delay;
  * @param options - Options for the delay.
  * @returns A promise that resolves after a random amount of time.
  */
-export function rangeDelay<T>(minimum: number, maximum: number, options?: Options<T>): Promise<T> {
+export function rangeDelay<T>(
+  minimum: number,
+  maximum: number,
+  options: Options<T> & { stats: true }
+): Promise<{ value: T; stats: DelayStats }>;
+export function rangeDelay<T>(minimum: number, maximum: number, options?: Options<T>): Promise<T>;
+export function rangeDelay<T>(minimum: number, maximum: number, options?: Options<T>): any {
   return delay(randomNumber(minimum, maximum), options);
 }
 
